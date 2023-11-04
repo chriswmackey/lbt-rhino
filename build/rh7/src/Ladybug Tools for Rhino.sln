@@ -1,7 +1,7 @@
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{b47d29dc-d252-4f9d-858c-888f4c013320}") = "Ladybug Tools for Rhino", "Ladybug Tools for Rhino\Ladybug Tools for Rhino.csproj", "{af4f5e09-da4c-4a29-9cc1-af17937e4d90}"
+Project("{b47d29dc-d252-4f9d-858c-888f4c013320}") = "Ladybug Tools for Rhino", "Ladybug Tools for Rhino\Ladybug Tools for Rhino.csproj", "{8d1ad8f7-415e-4120-829e-67abb060ea59}"
 EndProject
 
 Global
@@ -10,8 +10,8 @@ Global
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{af4f5e09-da4c-4a29-9cc1-af17937e4d90}.Debug|Any CPU.Build.0 = Debug|Any CPU
-{af4f5e09-da4c-4a29-9cc1-af17937e4d90}.Release|Any CPU.Build.0 = Release|Any CPU
+		{8d1ad8f7-415e-4120-829e-67abb060ea59}.Debug|Any CPU.Build.0 = Debug|Any CPU
+{8d1ad8f7-415e-4120-829e-67abb060ea59}.Release|Any CPU.Build.0 = Release|Any CPU
 
 	EndGlobalSection
 EndGlobal

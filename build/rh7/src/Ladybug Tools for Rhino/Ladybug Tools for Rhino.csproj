@@ -3,7 +3,7 @@
     <TargetFramework>net48</TargetFramework>
     <GenerateAssemblyInfo>False</GenerateAssemblyInfo>
     <AssemblyName>Ladybug Tools for Rhino</AssemblyName>
-    <AssemblyVersion>0.1.23266.8709</AssemblyVersion>
+    <AssemblyVersion>0.1.25253.8709</AssemblyVersion>
   </PropertyGroup>
 
   <ItemGroup>

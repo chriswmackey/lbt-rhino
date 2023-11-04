@@ -25,8 +25,8 @@ using Rhino.PlugIns;
 
 [assembly: ComVisible(false)]
 [assembly: Guid("b47d29dc-d252-4f9d-858c-888f4c013320")]
-[assembly: AssemblyVersion("0.1.23266.8709")]
-[assembly: AssemblyFileVersion("0.1.23266.8709")]
-[assembly: AssemblyInformationalVersion("0.1.23266.8709")]
+[assembly: AssemblyVersion("0.1.25253.8709")]
+[assembly: AssemblyFileVersion("0.1.25253.8709")]
+[assembly: AssemblyInformationalVersion("0.1.25253.8709")]
 
 [assembly: TargetFramework(".NETFramework,Version=v4.8", FrameworkDisplayName = ".NET Framework 4.8")]

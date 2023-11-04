@@ -20,21 +20,38 @@ try:
 except ImportError as e:
     raise ImportError('\nFailed to import ladybug_rhino:\n\t{}'.format(e))
 
+import Rhino
 import rhinoscriptsyntax as rs
 
 
 def run_sunpath_command():
     # get the EPW
-    epw_path = rs.GetString('Select An EPW File Path')
+    gepw = Rhino.Input.Custom.GetString()
+    gepw.SetCommandPrompt('Select an EPW file path')
+    
+    # add an option to set the north
+    north_option = Rhino.Input.Custom.OptionDouble(0, 0, 360)
+    gepw.AddOptionDouble('North', north_option)
+    while True:
+        # perform the get operation. This will prompt the user to
+        # input a point, but also allow for command line options
+        # defined above
+        get_epw = gepw.Get()
+        if get_epw == Rhino.Input.GetResult.String:
+            epw_path = gepw.StringResult()
+            north_ = north_option.CurrentValue
+        elif get_epw == Rhino.Input.GetResult.Option:
+            continue
+        break
+
+
     if not epw_path:
         return
     if not os.path.isfile(epw_path):
         print('Selected EPW file at does not exist at: {}'.format(epw_path))
         return
-    
 
     # process all of the global inputs for the sunpath
-    north_ = 0
     center_pt, center_pt3d = Point2D(), Point3D()
     z = 0
     _scale_ = 1
