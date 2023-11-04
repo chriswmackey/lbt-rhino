@@ -1,0 +1,83 @@
+{
+  "id": "b47d29dc-d252-4f9d-858c-888f4c013320",
+  "identity": {
+    "name": "Ladybug Tools for Rhino",
+    "version": "0.1-beta",
+    "publisher": {
+      "email": "chris@ladybug.tools",
+      "name": "Chris Mackey",
+      "company": "Ladybug Tools LLC"
+    },
+    "description": "A plugin that adds a series of Ladybug Tools functionalities as Rhino commands.",
+    "copyright": "Copyright \u00A9 2023 Chris Mackey",
+    "license": "AGPL",
+    "url": "https://www.ladybug.tools/"
+  },
+  "settings": {
+    "buildPath": "build/",
+    "buildTarget": {
+      "appName": "Rhino3D",
+      "appVersion": {
+        "major": 7
+      },
+      "title": "Rhino3D (7.*)",
+      "slug": "rh7"
+    },
+    "publishTarget": {
+      "title": "McNeel Yak Server"
+    }
+  },
+  "codes": [
+    {
+      "id": "0566725e-a8ae-4419-8d94-4d0c6910c256",
+      "language": {
+        "id": "*.*.python",
+        "version": "2.*.*"
+      },
+      "title": "LBT_Sunpath",
+      "uri": "commands/LBT_Sunpath.py"
+    }
+  ],
+  "libraries": [
+    {
+      "type": "uri",
+      "library": {
+        "base": "file:///C:/Users/chris/Documents/GitHub/lbt/lbt-rhino/libraries/ladybug_geometry/",
+        "language": {
+          "id": "*.*.python",
+          "version": "2.*.*"
+        }
+      }
+    },
+    {
+      "type": "uri",
+      "library": {
+        "base": "file:///C:/Users/chris/Documents/GitHub/lbt/lbt-rhino/libraries/ladybug/",
+        "language": {
+          "id": "*.*.python",
+          "version": "2.*.*"
+        }
+      }
+    },
+    {
+      "type": "uri",
+      "library": {
+        "base": "file:///C:/Users/chris/Documents/GitHub/lbt/lbt-rhino/libraries/ladybug_display/",
+        "language": {
+          "id": "*.*.python",
+          "version": "2.*.*"
+        }
+      }
+    },
+    {
+      "type": "uri",
+      "library": {
+        "base": "file:///C:/Users/chris/Documents/GitHub/lbt/lbt-rhino/libraries/ladybug_rhino/",
+        "language": {
+          "id": "*.*.python",
+          "version": "2.*.*"
+        }
+      }
+    }
+  ]
+}
