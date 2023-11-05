@@ -1,8 +1,6 @@
-#! python 2
 import Rhino
 import scriptcontext
  
-
 def CommandLineOptions():
     # For this example we will use a GetPoint class, but all of the custom
     # "Get" classes support command line options.

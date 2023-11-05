@@ -9,69 +9,147 @@ except ImportError as e:
     raise ImportError('\nFailed to import ladybug_geometry:\n\t{}'.format(e))
 
 try:
+    from ladybug.futil import unzip_file
+    from ladybug.config import folders
+    from ladybug.dt import DateTime
     from ladybug.epw import EPW
     from ladybug.sunpath import Sunpath
 except ImportError as e:
     raise ImportError('\nFailed to import ladybug:\n\t{}'.format(e))
 
 try:
+    from ladybug_rhino.download import download_file
     from ladybug_rhino.config import conversion_to_meters
+    from ladybug_rhino.preview import VisualizationSetConduit
     from ladybug_rhino.bakeobjects import bake_visualization_set
 except ImportError as e:
     raise ImportError('\nFailed to import ladybug_rhino:\n\t{}'.format(e))
 
 import Rhino
 import rhinoscriptsyntax as rs
+import scriptcontext as sc
 
 
 def run_sunpath_command():
-    # get the EPW
+    # get the EPW from command line
     gepw = Rhino.Input.Custom.GetString()
-    gepw.SetCommandPrompt('Select an EPW file path')
-    
-    # add an option to set the north
-    north_option = Rhino.Input.Custom.OptionDouble(0, 0, 360)
+    gepw.SetCommandPrompt('Select an EPW file path or URL')
+    if 'lbt_epw' in sc.sticky:
+        epw_path = sc.sticky['lbt_epw']
+        gepw.SetDefaultString(epw_path)
+
+    # add all of the options to the command
+    north_ = sc.sticky['lbt_north'] if 'lbt_north' in sc.sticky else 0
+    north_option = Rhino.Input.Custom.OptionDouble(north_, 0, 360)
     gepw.AddOptionDouble('North', north_option)
+
+    scale_ = sc.sticky['lbt_sunpath_scale'] if 'lbt_sunpath_scale' in sc.sticky else 1
+    scale_option = Rhino.Input.Custom.OptionDouble(scale_, True, 0)
+    gepw.AddOptionDouble('Scale', scale_option)
+
+    projection_i_ = sc.sticky['lbt_sunpath_projection'] \
+        if 'lbt_sunpath_projection' in sc.sticky else 0
+    projections = ('3D', 'StereoGraphic', 'Orthographic')
+    proj_list = gepw.AddOptionList('Projection', projections, projection_i_)
+
+    solar_time_ = sc.sticky['lbt_sunpath_solar_time'] \
+        if 'lbt_sunpath_solar_time' in sc.sticky else False
+    solar_time_option = Rhino.Input.Custom.OptionToggle(solar_time_, 'No', 'Yes')
+    gepw.AddOptionToggle('SolarTime', solar_time_option)
+
+    epw_data_i_ = sc.sticky['lbt_sunpath_data'] \
+        if 'lbt_sunpath_data' in sc.sticky else 0
+    epw_data_sets = (
+        'None', 'dry_bulb_temperature', 'dew_point_temperature', 'relative_humidity',
+        'wind_speed', 'wind_direction', 'direct_normal_radiation',
+        'diffuse_horizontal_radiation', 'global_horizontal_radiation'
+    )
+    epw_data_list = gepw.AddOptionList('Data', epw_data_sets, epw_data_i_)
+
+    # get the weather file and all options
     while True:
-        # perform the get operation. This will prompt the user to
-        # input a point, but also allow for command line options
-        # defined above
+        # This will prompt the user to input an EPW and visualization options
         get_epw = gepw.Get()
         if get_epw == Rhino.Input.GetResult.String:
             epw_path = gepw.StringResult()
             north_ = north_option.CurrentValue
+            scale_ = scale_option.CurrentValue
+            solar_time_ = solar_time_option.CurrentValue
         elif get_epw == Rhino.Input.GetResult.Option:
+            if gepw.OptionIndex() == proj_list:
+                projection_i_ = gepw.Option().CurrentListOptionIndex
+            if gepw.OptionIndex() == epw_data_list:
+                epw_data_i_ = gepw.Option().CurrentListOptionIndex
             continue
         break
 
+    # save all of the options to sticky
+    sc.sticky['lbt_north'] = north_
+    sc.sticky['lbt_sunpath_scale'] = scale_
+    sc.sticky['lbt_sunpath_projection'] = projection_i_
+    sc.sticky['lbt_sunpath_solar_time'] = solar_time_
+    sc.sticky['lbt_sunpath_data'] = epw_data_i_
 
+    # process the EPW file path or URL
     if not epw_path:
         return
-    if not os.path.isfile(epw_path):
-        print('Selected EPW file at does not exist at: {}'.format(epw_path))
-        return
+    _def_folder = folders.default_epw_folder
+    if epw_path.startswith('http'):  # download the EPW file
+        _weather_URL = epw_path
+        if _weather_URL.lower().endswith('.zip'):  # onebuilding URL type
+            _folder_name = _weather_URL.split('/')[-1][:-4]
+        else:  # dept of energy URL type
+            _folder_name = _weather_URL.split('/')[-2]
+        epw_path = os.path.join(_def_folder, _folder_name, _folder_name + '.epw')
+        if not os.path.isfile(epw_path):
+            zip_file_path = os.path.join(_def_folder, _folder_name, _folder_name + '.zip')
+            download_file(_weather_URL, zip_file_path, True)
+            unzip_file(zip_file_path)
+        sc.sticky['lbt_epw'] = os.path.basename(epw_path)
+    elif not os.path.isfile(epw_path):
+        possible_file = os.path.basename(epw_path)[:-4] \
+            if epw_path.lower().endswith('.epw') else epw_path
+        epw_path = os.path.join(_def_folder, possible_file, possible_file + '.epw')
+        if not os.path.isfile(epw_path):
+            print('Selected EPW file at does not exist at: {}'.format(epw_path))
+            return
+        sc.sticky['lbt_epw'] = possible_file + '.epw'
+    else:
+        sc.sticky['lbt_epw'] = epw_path
 
     # process all of the global inputs for the sunpath
-    center_pt, center_pt3d = Point2D(), Point3D()
-    z = 0
-    _scale_ = 1
-    radius = (100 * _scale_) / conversion_to_meters()
-    solar_time_ = False
+    center_pt3d = Point3D()
+    radius = (100 * scale_) / conversion_to_meters()
     daily_ = False
-    projection_ = None
-    dl_saving_ = None
-    l_par = None
-    hoys_ = []
-    data_ = []
+    projection_ = projections[projection_i_] if projection_i_ != 0 else None
 
     # get the location from the EPW
     epw_obj = EPW(epw_path)
     _location = epw_obj.location
 
-    # make the sunpath
-    sp = Sunpath.from_location(_location, north_, dl_saving_)
-    vis_set_args = [hoys_, data_, l_par, radius, center_pt3d, solar_time_, daily_, projection_]
+    # process the EPW data to be plotted on the chart if it was requested
+    hoys_, data_ = [], []
+    if epw_data_i_ != 0:
+        data_.append(getattr(epw_obj, epw_data_sets[epw_data_i_]))
+        for month in range(1, 13):
+            for day in range(1, 29, 7):
+                for hour in range(24):
+                    hoys_.append(DateTime(month, day, hour).hoy)
+
+    # make the sunpath visualization set
+    sp = Sunpath.from_location(_location, north_)
+    vis_set_args = [hoys_, data_, None, radius, center_pt3d, solar_time_, daily_, projection_]
     vis_set = sp.to_vis_set(*vis_set_args)
+
+    # preview the visualization set
+    conduit = VisualizationSetConduit(vis_set)
+    conduit.Enabled = True
+    sc.doc.Views.Redraw()
+    rs.GetString('Press ENTER to add the Sunpath to the document. Press ESC to exit.')
+    conduit.Enabled = False
+    sc.doc.Views.Redraw()
+
+    # add the visualization set to the document
     bake_visualization_set(vis_set)
 
 
