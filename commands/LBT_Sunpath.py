@@ -21,6 +21,8 @@ try:
     from ladybug_rhino.download import download_file
     from ladybug_rhino.config import conversion_to_meters
     from ladybug_rhino.preview import VisualizationSetConduit
+    from ladybug_rhino.togeometry import to_point3d
+    from ladybug_rhino.fromgeometry import from_point3d
     from ladybug_rhino.bakeobjects import bake_visualization_set
 except ImportError as e:
     raise ImportError('\nFailed to import ladybug_rhino:\n\t{}'.format(e))
@@ -34,6 +36,7 @@ def run_sunpath_command():
     # get the EPW from command line
     gepw = Rhino.Input.Custom.GetString()
     gepw.SetCommandPrompt('Select an EPW file path or URL')
+    epw_path = None
     if 'lbt_epw' in sc.sticky:
         epw_path = sc.sticky['lbt_epw']
         gepw.SetDefaultString(epw_path)
@@ -118,7 +121,7 @@ def run_sunpath_command():
         sc.sticky['lbt_epw'] = epw_path
 
     # process all of the global inputs for the sunpath
-    center_pt3d = Point3D()
+    center_pt3d = sc.sticky['lbt_origin'] if 'lbt_origin' in sc.sticky else Point3D()
     radius = (100 * scale_) / conversion_to_meters()
     daily_ = False
     projection_ = projections[projection_i_] if projection_i_ != 0 else None
@@ -141,16 +144,46 @@ def run_sunpath_command():
     vis_set_args = [hoys_, data_, None, radius, center_pt3d, solar_time_, daily_, projection_]
     vis_set = sp.to_vis_set(*vis_set_args)
 
-    # preview the visualization set
-    conduit = VisualizationSetConduit(vis_set)
+    # preview the visualization set and ask if the origin should be changed
+    conduit = VisualizationSetConduit(vis_set, render_3d_legend=True, render_2d_legend=False)
     conduit.Enabled = True
     sc.doc.Views.Redraw()
-    rs.GetString('Press ENTER to add the Sunpath to the document. Press ESC to exit.')
+    gp = Rhino.Input.Custom.GetPoint()
+    gp.SetCommandPrompt('Select a Point for the origin or press ENTER to keep the current one.')
+    gp.SetDefaultPoint(from_point3d(center_pt3d))
+    gp.Get()
+    if gp.CommandResult() == Rhino.Commands.Result.Success:
+        point = gp.Point()
+        origin = to_point3d(point)
+        vis_set_args[4] = origin
+        sc.sticky['lbt_origin'] = origin
+        vis_set = sp.to_vis_set(*vis_set_args)
+        conduit.Enabled = False
+        conduit = VisualizationSetConduit(vis_set, render_3d_legend=True, render_2d_legend=False)
+        conduit.Enabled = True
+        sc.doc.Views.Redraw()
+
+    # finally, let people decide what they want to do with the result
+    gres = Rhino.Input.Custom.GetString()
+    gres.SetCommandPrompt('Would you like to add the Sunpath Geometry to the Document? Hit ENTER when done.')
+    gres.SetDefaultString('Add?')
+    bake_result = False
+    result_option = Rhino.Input.Custom.OptionToggle(False, 'No', 'Yes')
+    gres.AddOptionToggle('AddToDoc', result_option)
+    while True:
+        # This will prompt the user to input an EPW and visualization options
+        get_res = gres.Get()
+        if get_res == Rhino.Input.GetResult.String:
+            bake_result = result_option.CurrentValue
+        else:
+            continue
+        break
     conduit.Enabled = False
     sc.doc.Views.Redraw()
 
     # add the visualization set to the document
-    bake_visualization_set(vis_set)
+    if bake_result:
+        bake_visualization_set(vis_set, bake_3d_legend=True)
 
 
 run_sunpath_command()

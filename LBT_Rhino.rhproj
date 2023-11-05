@@ -18,11 +18,10 @@
     "buildTarget": {
       "appName": "Rhino3D",
       "appVersion": {
-        "major": 8,
-        "minor": 0
+        "major": 7
       },
-      "title": "Rhino3D (8.0)",
-      "slug": "rh8_0"
+      "title": "Rhino3D (7.*)",
+      "slug": "rh7"
     },
     "publishTarget": {
       "title": "McNeel Yak Server"
