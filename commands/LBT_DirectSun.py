@@ -120,6 +120,9 @@ def run_direct_sun_command():
     else:
         sc.sticky['lbt_epw'] = epw_path
 
+    # save all of the options to sticky
+    sc.sticky['lbt_north'] = north_
+
     # compute the sun vectors to be used in the study
     epw_obj = EPW(epw_path)
     _location = epw_obj.location
@@ -167,6 +170,8 @@ def run_direct_sun_command():
             have_preselected_objects = True
             go.EnablePreSelect(False, True)
             continue
+        grid_size_ = gs_option.CurrentValue
+        offset_dist_ = off_option.CurrentValue
         break
     if have_preselected_objects:
         for i in range(0, go.ObjectCount):
@@ -180,6 +185,10 @@ def run_direct_sun_command():
     geometry_ = []
     for get_obj in go.Objects():
         geometry_.append(obj_table.Find(get_obj.ObjectId).Geometry)
+
+    # save all of the options to sticky
+    sc.sticky['lbt_study_grid_size'] = grid_size_
+    sc.sticky['lbt_study_offset'] = offset_dist_
 
     # create the gridded mesh from the geometry
     study_mesh = to_joined_gridded_mesh3d(geometry_, grid_size_)
@@ -281,6 +290,10 @@ def run_direct_sun_command():
         break
     conduit.Enabled = False
     sc.doc.Views.Redraw()
+
+    # add the visualization set to the document
+    if bake_result:
+        bake_visualization_set(vis_set, bake_3d_legend=True)
 
 
 run_direct_sun_command()
