@@ -28,7 +28,7 @@ except ImportError as e:
 
 try:
     from ladybug_rhino.download import download_file
-    from ladybug_rhino.config import conversion_to_meters
+    from ladybug_rhino.config import conversion_to_meters, rhino_version
     from ladybug_rhino.togeometry import to_joined_gridded_mesh3d, to_vector3d
     from ladybug_rhino.fromgeometry import from_point3d, from_vector3d
     from ladybug_rhino.intersect import join_geometry_to_mesh, intersect_mesh_rays
@@ -74,6 +74,19 @@ def run_direct_sun_command():
         gepw.SetDefaultString(epw_path)
 
     # add all of the options to the command
+    month_i_ = sc.sticky['lbt_sunpath_month'] if 'lbt_sunpath_month' in sc.sticky else 12
+    avail_months = ('All', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+                    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec')
+    month_list = gepw.AddOptionList('Month', avail_months, month_i_)
+
+    day_ = sc.sticky['lbt_sunpath_day'] if 'lbt_sunpath_day' in sc.sticky else 21
+    day_option = Rhino.Input.Custom.OptionInteger(day_, 0, 31)
+    gepw.AddOptionInteger('Day', day_option)
+
+    hour_ =  sc.sticky['lbt_sunpath_hour'] if 'lbt_sunpath_hour' in sc.sticky else 24
+    hour_option = Rhino.Input.Custom.OptionInteger(hour_, 0, 24)
+    gepw.AddOptionInteger('Hour', hour_option)
+
     north_ = sc.sticky['lbt_north'] if 'lbt_north' in sc.sticky else 0
     north_option = Rhino.Input.Custom.OptionDouble(north_, 0, 360)
     gepw.AddOptionDouble('North', north_option)
@@ -85,11 +98,17 @@ def run_direct_sun_command():
         if get_epw == Rhino.Input.GetResult.String:
             epw_path = gepw.StringResult()
             north_ = north_option.CurrentValue
-        else:
-            continue
+            day_ = day_option.CurrentValue
+            hour_ = hour_option.CurrentValue
+        elif get_epw == Rhino.Input.GetResult.Option:
+            if gepw.OptionIndex() == month_list:
+                month_i_ = gepw.Option().CurrentListOptionIndex
         break
 
     # save all of the options to sticky
+    sc.sticky['lbt_sunpath_month'] = month_i_
+    sc.sticky['lbt_sunpath_day'] = day_
+    sc.sticky['lbt_sunpath_hour'] = hour_
     sc.sticky['lbt_north'] = north_
 
     # process the EPW file path or URL
@@ -120,17 +139,33 @@ def run_direct_sun_command():
     else:
         sc.sticky['lbt_epw'] = epw_path
 
-    # save all of the options to sticky
-    sc.sticky['lbt_north'] = north_
-
     # compute the sun vectors to be used in the study
     epw_obj = EPW(epw_path)
     _location = epw_obj.location
     sp = Sunpath.from_location(_location, north_)
-    _vectors = []
-    for hoy in range(24):
-        sun = sp.calculate_sun_from_hoy(hoy, False)
-        _vectors.append(from_vector3d(sun.sun_vector))
+    months = [month_i_] if month_i_ != 0 else list(range(1, 13))
+    days = [day_] if day_ != 0 else list(range(1, 32))
+    hours = [hour_] if hour_ != 24 else list(range(0, 24))
+    _vectors, _hoys = [], []
+    for month in months:
+        for day in days:
+            for hour in hours:
+                date_obj = DateTime(month, day, hour)
+                hoy = date_obj.hoy
+                sun = sp.calculate_sun_from_hoy(hoy, False)
+                if sun.is_during_day:
+                    _vectors.append(from_vector3d(sun.sun_vector))
+                    _hoys.append(hoy)
+
+    # make a preview of the suns on the sunpath
+    center_pt3d = sc.sticky['lbt_origin'] if 'lbt_origin' in sc.sticky else Point3D()
+    scale_ = sc.sticky['lbt_sunpath_scale'] if 'lbt_sunpath_scale' in sc.sticky else 1
+    radius = (100 * scale_) / conversion_to_meters()
+    vis_set_args = [_hoys, [], None, radius, center_pt3d]
+    vis_set = sp.to_vis_set(*vis_set_args)
+    conduit = VisualizationSetConduit(vis_set)
+    conduit.Enabled = True
+    sc.doc.Views.Redraw()
 
     # get the analysis geometry from the scene
     geo_filter = Rhino.DocObjects.ObjectType.Surface | Rhino.DocObjects.ObjectType.PolysrfFilter | \
@@ -179,12 +214,18 @@ def run_direct_sun_command():
             if not rhino_obj is None:
                 rhino_obj.Select(False)
         sc.doc.Views.Redraw()
-    
+
+    # turn off the preview of the sunpath
+    conduit.Enabled = False
+    sc.doc.Views.Redraw()
+
     # get the actual geometry from the selection
     obj_table = Rhino.RhinoDoc.ActiveDoc.Objects
     geometry_ = []
     for get_obj in go.Objects():
         geometry_.append(obj_table.Find(get_obj.ObjectId).Geometry)
+    if len(geometry_) == 0:
+        return
 
     # save all of the options to sticky
     sc.sticky['lbt_study_grid_size'] = grid_size_
@@ -250,6 +291,7 @@ def run_direct_sun_command():
     normals = [from_vector3d(vec) for vec in study_mesh.face_normals]
 
     # intersect the rays with the mesh
+    cpu_count = recommended_processor_count() if rhino_version < (8, 0) else 1
     int_matrix, angles = intersect_mesh_rays(
         shade_mesh, points, rev_vec, normals, cpu_count=1)
     results = [sum(int_list) for int_list in int_matrix]
@@ -269,7 +311,10 @@ def run_direct_sun_command():
     vis_set.add_geometry(mesh_geo)
 
     # preview the visualization set
-    conduit = VisualizationSetConduit(vis_set)
+    render_2d_legend = True if rhino_version < (8, 0) else False
+    render_3d_legend = False if rhino_version < (8, 0) else True
+    conduit = VisualizationSetConduit(
+        vis_set, render_2d_legend=render_2d_legend, render_3d_legend=render_3d_legend)
     conduit.Enabled = True
     sc.doc.Views.Redraw()
 
