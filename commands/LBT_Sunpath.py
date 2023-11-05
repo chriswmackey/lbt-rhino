@@ -28,7 +28,6 @@ except ImportError as e:
     raise ImportError('\nFailed to import ladybug_rhino:\n\t{}'.format(e))
 
 import Rhino
-import rhinoscriptsyntax as rs
 import scriptcontext as sc
 
 
@@ -95,6 +94,7 @@ def run_sunpath_command():
 
     # process the EPW file path or URL
     if not epw_path:
+        print('No EPW file selected.')
         return
     _def_folder = folders.default_epw_folder
     if epw_path.startswith('http'):  # download the EPW file

@@ -36,6 +36,15 @@
       },
       "title": "LBT_Sunpath",
       "uri": "commands/LBT_Sunpath.py"
+    },
+    {
+      "id": "5853c1ed-e530-4544-a65a-8cc5e4da8976",
+      "language": {
+        "id": "*.*.python",
+        "version": "2.*.*"
+      },
+      "title": "LBT_DirectSun",
+      "uri": "commands/LBT_DirectSun.py"
     }
   ],
   "libraries": [
