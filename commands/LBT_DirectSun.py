@@ -291,9 +291,9 @@ def run_direct_sun_command():
     normals = [from_vector3d(vec) for vec in study_mesh.face_normals]
 
     # intersect the rays with the mesh
-    cpu_count = recommended_processor_count() if rhino_version < (8, 0) else 1
-    int_matrix, angles = intersect_mesh_rays(
-        shade_mesh, points, rev_vec, normals, cpu_count=1)
+    cpu_count = recommended_processor_count()
+    int_matrix, _ = intersect_mesh_rays(
+        shade_mesh, points, rev_vec, normals, cpu_count=cpu_count)
     results = [sum(int_list) for int_list in int_matrix]
 
     # create an result visualization set and display it in the scene
